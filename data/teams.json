@@ -1,0 +1,12 @@
+[
+  {"id": "CSK", "name": "Chennai Super Kings", "short": "CSK", "city": "Chennai", "home": "M. A. Chidambaram Stadium", "gradient": "linear-gradient(135deg,#f9cd05 0%,#e8a400 100%)"},
+  {"id": "MI", "name": "Mumbai Indians", "short": "MI", "city": "Mumbai", "home": "Wankhede Stadium", "gradient": "linear-gradient(135deg,#004b8d 0%,#0a6ec9 100%)"},
+  {"id": "RCB", "name": "Royal Challengers Bengaluru", "short": "RCB", "city": "Bengaluru", "home": "M. Chinnaswamy Stadium", "gradient": "linear-gradient(135deg,#d5152d 0%,#8f0e20 100%)"},
+  {"id": "KKR", "name": "Kolkata Knight Riders", "short": "KKR", "city": "Kolkata", "home": "Eden Gardens", "gradient": "linear-gradient(135deg,#3a225d 0%,#6a3fa0 100%)"},
+  {"id": "SRH", "name": "Sunrisers Hyderabad", "short": "SRH", "city": "Hyderabad", "home": "Rajiv Gandhi Intl. Stadium", "gradient": "linear-gradient(135deg,#f26522 0%,#c94a10 100%)"},
+  {"id": "DC", "name": "Delhi Capitals", "short": "DC", "city": "Delhi", "home": "Arun Jaitley Stadium", "gradient": "linear-gradient(135deg,#17479e 0%,#2a63c9 100%)"},
+  {"id": "PBKS", "name": "Punjab Kings", "short": "PBKS", "city": "Mohali", "home": "Maharaja Yadavindra Singh Stadium", "gradient": "linear-gradient(135deg,#d71920 0%,#b01218 100%)"},
+  {"id": "RR", "name": "Rajasthan Royals", "short": "RR", "city": "Jaipur", "home": "Sawai Mansingh Stadium", "gradient": "linear-gradient(135deg,#ea1a85 0%,#c3146c 100%)"},
+  {"id": "GT", "name": "Gujarat Titans", "short": "GT", "city": "Ahmedabad", "home": "Narendra Modi Stadium", "gradient": "linear-gradient(135deg,#1b2133 0%,#33405f 100%)"},
+  {"id": "LSG", "name": "Lucknow Super Giants", "short": "LSG", "city": "Lucknow", "home": "Ekana Stadium", "gradient": "linear-gradient(135deg,#0057e7 0%,#0672f0 100%)"}
+]

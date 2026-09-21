@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auction Room — IPL Auction Sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+  <style>
+    .sold-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px; border-radius: 20px; z-index: 5; opacity: 0; pointer-events: none;
+      transition: opacity .25s; backdrop-filter: blur(6px); }
+    .sold-flash.show { opacity: 1; }
+    .sold-flash .big { font-size: 44px; font-weight: 800; letter-spacing: 2px; }
+    .sold-flash.sold { background: rgba(34,197,94,.16); }
+    .sold-flash.sold .big { color: var(--green); }
+    .sold-flash.unsold { background: rgba(239,68,68,.14); }
+    .sold-flash.unsold .big { color: var(--red); }
+    .overlay { position: fixed; inset: 0; background: rgba(5,8,18,.9); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; z-index: 80; text-align: center; padding: 20px; overflow-y: auto; }
+    .overlay .box { max-width: 520px; width: 100%; }
+    .overlay h2 { font-size: 30px; margin-bottom: 10px; }
+    .overlay p { color: var(--muted); margin-bottom: 18px; line-height: 1.6; }
+    .join-link { display: flex; gap: 8px; margin-top: 8px; }
+    .join-link input { flex: 1; min-width: 0; }
+    .lobby-teams { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+    @media (max-width: 640px) { .lobby-teams { grid-template-columns: repeat(3, 1fr); } }
+    .lobby-team { border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 6px; text-align: center; font-size: 12px; }
+    .lobby-team .team-logo { margin: 0 auto 6px; width: 38px; height: 38px; font-size: 11px; }
+    .lobby-team.mine { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(245,197,66,.18); }
+    .lobby-team .who { color: var(--gold); font-weight: 700; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
+    .hostbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card);
+      border: 1px solid rgba(245,197,66,.3); border-radius: 14px; padding: 10px 14px; }
+    .hostbar label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .hostbar select { background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 8px; padding: 6px 8px; font-family: inherit; }
+    .hostbar .btn { padding: 7px 12px; font-size: 12.5px; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links" id="navActions"></nav>
+    </div>
+  </header>
+
+  <div class="container room-layout" id="layout" style="display:none">
+    <div class="team-rail" id="teamRail"></div>
+
+    <div class="stage">
+      <div class="hostbar" id="hostbar" style="display:none">
+        <label>⏱ Timer</label>
+        <select id="timerSelect">
+          <option value="10">10s</option>
+          <option value="7">7s</option>
+          <option value="5">5s</option>
+          <option value="3">3s</option>
+        </select>
+        <button class="btn btn-ghost" id="ratingsBtn">🙈 Hide Ratings</button>
+        <button class="btn btn-ghost" id="pauseBtn">⏸ Pause</button>
+        <button class="btn btn-ghost" id="resetBtn" style="color:#f87171">↺ Reset Room</button>
+        <span class="muted" style="font-size:11.5px;margin-left:auto">Host controls</span>
+      </div>
+
+      <div class="stage-topbar">
+        <div>
+          <div style="font-weight:800" id="modeLabel"></div>
+          <div class="rules-strip" id="rulesStrip"></div>
+        </div>
+        <div class="center">
+          <div class="muted" style="font-size:11px;letter-spacing:1px">ROOM CODE</div>
+          <div class="code" id="roomCode">------</div>
+        </div>
+      </div>
+
+      <div class="player-stage" id="stage">
+        <div class="p-rating-badge" id="ratingBadge"><div class="num">?</div><div class="lbl">RATING</div></div>
+        <div class="p-name" id="pName">Waiting…</div>
+        <div class="p-meta" id="pMeta"></div>
+        <div class="bid-box">
+          <div class="bid-amount" id="bidAmount">—</div>
+          <div class="bid-leader" id="bidLeader"></div>
+        </div>
+        <div class="timerbar"><div class="fill" id="timerFill" style="width:100%"></div></div>
+        <div class="muted" id="timerText" style="margin-top:6px;font-size:12.5px"></div>
+        <div class="bid-controls">
+          <button class="btn btn-gold" id="bidBtn" style="min-width:190px">BID</button>
+        </div>
+        <div class="muted" id="capText" style="margin-top:10px;font-size:12.5px"></div>
+        <div class="sold-flash" id="flash"><div class="big" id="flashBig">SOLD!</div><div id="flashSub"></div></div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="squad-panel">
+        <h4><span id="squadTitle">My Squad</span><span class="muted" id="squadCount" style="font-weight:600;font-size:12px"></span></h4>
+        <div class="viewing" id="viewingNote">Click a team on the left to view its squad</div>
+        <div class="squad-list" id="squadList"></div>
+        <div class="row-between mt-2" style="font-size:13px">
+          <span class="muted">Purse left</span><b class="purse" id="squadPurse">—</b>
+        </div>
+      </div>
+      <div class="squad-panel">
+        <h4>Auction Feed</h4>
+        <div class="feed" id="feed"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="lobbyOverlay">
+    <div class="box">
+      <div style="font-size:52px">🏏</div>
+      <h2>Room <span id="lobbyCode" style="color:var(--gold);letter-spacing:3px">------</span></h2>
+      <p>Share this code — friends open <b>Join with Code</b>, enter it and claim a free franchise. The host starts the auction when everyone's in.</p>
+      <div class="join-link">
+        <input class="input" id="shareLink" readonly />
+        <button class="btn btn-ghost btn-sm" id="copyLinkBtn">Copy</button>
+      </div>
+      <div class="lobby-teams" id="lobbyTeams"></div>
+      <div class="mt-3">
+        <button class="btn btn-primary" id="startBtn" style="display:none">Start Auction 🔨</button>
+        <p class="muted" id="waitingMsg" style="font-size:13.5px">Waiting for the host to start…</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="doneOverlay">
+    <div class="box">
+      <div style="font-size:52px">🏆</div>
+      <h2>Auction complete!</h2>
+      <p>All players are gone. Check the final squads.</p>
+      <a class="btn btn-gold" id="resultsLink" href="#">View Results →</a>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script src="js/core.js"></script>
+  <script>
+  (function () {
+    const code = (Core.qs('code') || '').toUpperCase();
+    if (!code) { location.href = 'create.html'; return; }
+
+    let room = null;
+    let playersIdx = {};          // name -> player (ratings may be null when hidden)
+    let myTeam = null, token = null, isHost = false;
+    let viewTeam = null;
+    let lastTopLog = '';
+    let pollHandle = null, tickHandle = null;
+    let soldShown = false;
+
+    const sess = Core.Session.get();
+    if (sess && sess.roomCode === code) {
+      myTeam = sess.team || null;
+      token = sess.token || null;
+      isHost = !!sess.host;
+    }
+
+    const $ = id => document.getElementById(id);
+
+    // ---------- data flow ----------
+    async function fetchRoom() {
+      const data = await Core.api('/api/room?code=' + code);
+      room = data.room;
+      playersIdx = {};
+      (data.players || []).forEach(p => { playersIdx[p.n] = p; });
+    }
+
+    async function poll() {
+      try {
+        await fetchRoom();
+        render();
+      } catch (e) {
+        showToast(e.message);
+      }
+    }
+
+    // host loop: tick + poll
+    async function hostLoop() {
+      try {
+        const res = await Core.api('/api/room', { action: 'tick', code, token });
+        if (res.room) { room = res.room; }
+        else await fetchRoom();
+        // also fetch players list (for ratings visibility changes)
+        render();
+        await pollPlayers();
+      } catch (e) { /* transient */ }
+    }
+
+    async function pollPlayers() {
+      try {
+        const data = await Core.api('/api/room?code=' + code);
+        playersIdx = {};
+        (data.players || []).forEach(p => { playersIdx[p.n] = p; });
+      } catch (e) {}
+    }
+
+    // ---------- boot ----------
+    (async function boot() {
+      try { await fetchRoom(); } catch (e) { location.href = 'join.html'; return; }
+      render();
+      if (isHost) {
+        tickHandle = setInterval(hostLoop, 1000);
+        pollHandle = setInterval(pollPlayers, 4000);
+      } else {
+        pollHandle = setInterval(poll, 1200);
+      }
+    })();
+
+    // ---------- render ----------
+    function render() {
+      if (!room) return;
+      $('layout').style.display = 'grid';
+      $('roomCode').textContent = room.code;
+      $('lobbyCode').textContent = room.code;
+      $('modeLabel').textContent = room.rules.label;
+      $('rulesStrip').innerHTML =
+        '<span>Purse ' + Core.fmtCr(room.rules.purse / 100) + '</span>' +
+        '<span>Squad ' + room.rules.minSquad + '–' + room.rules.maxSquad + '</span>' +
+        '<span>Max ' + room.rules.maxOverseas + ' overseas</span>';
+      $('shareLink').value = location.origin + '/join.html?code=' + room.code;
+      $('hostbar').style.display = isHost ? 'flex' : 'none';
+
+      renderNav();
+      renderRail();
+      renderStage();
+      renderSquad();
+      renderFeed();
+
+      if (room.phase === 'LOBBY') { $('lobbyOverlay').classList.remove('hidden'); renderLobby(); }
+      else $('lobbyOverlay').classList.add('hidden');
+
+      if (room.done) { $('doneOverlay').classList.remove('hidden'); $('resultsLink').href = 'results.html?code=' + room.code; }
+      else $('doneOverlay').classList.add('hidden');
+    }
+
+    function renderNav() {
+      let html = '<span class="muted" style="font-size:13px">' + (isHost ? '👑 Host: ' : '👤 ') + esc(sess?.name || '') + '</span>';
+      if (room.phase === 'DONE') html += '<a href="results.html?code=' + room.code + '" class="btn btn-gold btn-sm">Results →</a>';
+      $('navActions').innerHTML = html;
+    }
+
+    function renderRail() {
+      $('teamRail').innerHTML = room.order.map(id => {
+        const t = room.teams[id];
+        const leader = room.current && room.current.leader === id;
+        const ov = t.squad.filter(s => pIsOverseas(s.n)).length;
+        return '<div class="rail-team ' + (leader ? 'active-leader' : '') + '" data-id="' + id + '">' +
+          '<div class="top">' +
+          '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+          '<div class="meta"><div class="nm">' + t.name + '</div>' +
+          '<div class="counts">' + (t.owner ? '👤 ' + esc(t.owner) : '⏳ open') + ' · ' + t.squad.length + '/' + room.rules.maxSquad + ' · ' + ov + ' OV</div></div>' +
+          '<div class="purse">' + Core.fmtCr(t.purse / 100) + '</div>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function renderStage() {
+      const cur = room.current;
+      const bidBtn = $('bidBtn');
+
+      if (!cur) {
+        $('pName').textContent = room.phase === 'DONE' ? 'Auction complete' : 'Next player coming up…';
+        $('bidAmount').textContent = '—';
+        $('bidLeader').textContent = '';
+        $('pMeta').innerHTML = '';
+        $('ratingBadge').querySelector('.num').textContent = '?';
+        $('timerText').textContent = '';
+        bidBtn.disabled = true;
+        bidBtn.textContent = '—';
+        return;
+      }
+
+      const p = playersIdx[cur.name] || {};
+      const ratingsVisible = room.showRatings && p.o != null;
+
+      const badge = $('ratingBadge');
+      badge.querySelector('.num').textContent = ratingsVisible ? p.o : '?';
+      badge.classList.toggle('elite', ratingsVisible && p.o >= 88);
+      $('pName').textContent = cur.name;
+      $('pMeta').innerHTML =
+        (ratingsVisible ? '<span class="p-tag">' + roleLabel(p.r) + '</span><span class="p-tag">' + p.c + '</span>' : '') +
+        (p.c && p.c !== 'IND' ? '<span class="p-tag ov">Overseas</span>' : '') +
+        '<span class="p-tag base">Base ' + Core.fmtLakh(cur.base) + '</span>';
+
+      $('bidAmount').textContent = cur.bid > 0 ? Core.fmtLakh(cur.bid) : 'Base ' + Core.fmtLakh(cur.base);
+      $('bidLeader').innerHTML = cur.leader
+        ? '<b>' + esc(room.teams[cur.leader].short) + '</b>' + (room.teams[cur.leader].owner ? ' (' + esc(room.teams[cur.leader].owner) + ')' : '') + ' leading'
+        : 'Awaiting the opening bid';
+
+      // smooth local countdown to server endsAt
+      const total = (room.bidSeconds || 10) * 1000;
+      const remain = Math.max(0, cur.endsAt - Date.now());
+      $('timerFill').style.width = Math.round(100 * remain / total) + '%';
+      $('timerText').textContent = '⏱ ' + (remain / 1000).toFixed(1) + 's — hammer falls when the clock hits zero';
+
+      // my bid button
+      const mine = myTeam ? room.teams[myTeam] : null;
+      const isLeader = mine && cur.leader === myTeam;
+      if (mine && room.phase === 'AUCTION' && !room.paused) {
+        const nextAmt = cur.bid === 0 ? cur.base : nextBidLocal(cur.bid);
+        if (isLeader) {
+          bidBtn.textContent = '🏆 Highest bidder';
+          bidBtn.disabled = true;
+        } else {
+          bidBtn.textContent = 'BID ' + Core.fmtLakh(nextAmt);
+          const spotsLeft = room.rules.maxSquad - mine.squad.length;
+          const cap = mine.purse - Math.max(0, spotsLeft - 1) * 40;
+          const ovMine = mine.squad.filter(s => pIsOverseas(s.n)).length;
+          bidBtn.disabled = nextAmt > cap || (p.c && p.c !== 'IND' && ovMine >= room.rules.maxOverseas);
+        }
+        $('capText').textContent = 'Your purse: ' + Core.fmtCr(mine.purse / 100);
+      } else {
+        bidBtn.textContent = myTeam ? (room.paused ? 'Paused' : '—') : 'Spectating — join to bid';
+        bidBtn.disabled = true;
+        $('capText').textContent = myTeam ? '' : 'You have not claimed a franchise in this room.';
+      }
+    }
+
+    function renderSquad() {
+      const viewId = viewTeam || myTeam || room.order[0];
+      const t = room.teams[viewId];
+      if (!t) return;
+      $('squadTitle').textContent = (viewId === myTeam ? 'My Squad — ' : '') + t.name;
+      $('squadCount').textContent = t.squad.length + '/' + room.rules.maxSquad;
+      $('squadList').innerHTML = t.squad.length ? t.squad.map(s => {
+        const p = playersIdx[s.n] || {};
+        const show = room.showRatings && p.o != null;
+        return '<div class="squad-row"><span><b>' + esc(s.n) + '</b> <span class="rt">' +
+          (show ? p.r + ' · ' + p.o : '') + '</span></span>' +
+          '<span class="pr">' + Core.fmtLakh(s.p) + '</span></div>';
+      }).join('') : '<div class="muted" style="font-size:12.5px">No players yet.</div>';
+      $('squadPurse').textContent = Core.fmtCr(t.purse / 100);
+    }
+
+    function renderFeed() {
+      const top = room.log[0] || '';
+      if (top && top !== lastTopLog) {
+        const m = top.match(/^🔨 SOLD (.+) to (\S+) for (.+)$/);
+        if (m) { flash('sold', 'SOLD!', m[1] + ' → ' + m[2] + ' · ' + m[3]); }
+        else {
+          const u = top.match(/^❌ UNSOLD (.+) \(base (.+)\)$/);
+          if (u) flash('unsold', 'UNSOLD', u[1]);
+        }
+        lastTopLog = top;
+      }
+      $('feed').innerHTML = room.log.map(l => '<div class="row"><b>' + esc(l) + '</b></div>').join('');
+    }
+
+    function renderLobby() {
+      $('lobbyTeams').innerHTML = room.order.map(id => {
+        const t = room.teams[id];
+        return '<div class="lobby-team ' + (id === myTeam ? 'mine' : '') + '">' +
+          '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+          '<div class="who">' + (t.owner ? esc(t.owner) : 'open') + '</div></div>';
+      }).join('');
+      $('startBtn').style.display = isHost ? '' : 'none';
+      $('waitingMsg').textContent = isHost
+        ? (Object.values(room.teams).every(t => t.owner) ? 'All franchises claimed — ready when you are!' : 'You can start now, or wait for friends to claim teams.')
+        : 'Waiting for the host to start…';
+    }
+
+    // ---------- actions ----------
+    $('bidBtn').onclick = async () => {
+      const cur = room.current;
+      if (!cur || !myTeam) return;
+      const nextAmt = cur.bid === 0 ? cur.base : nextBidLocal(cur.bid);
+      try {
+        const res = await Core.api('/api/bid', { code, team: myTeam, token, amount: nextAmt });
+        if (!res.ok) showToast(res.msg || 'Bid rejected');
+      } catch (e) { showToast(e.message); }
+    };
+
+    $('startBtn').onclick = async () => {
+      try { await Core.api('/api/room', { action: 'start', code, token }); }
+      catch (e) { showToast(e.message); }
+    };
+
+    $('pauseBtn').onclick = async () => {
+      const pausing = !room.paused;
+      try {
+        await Core.api('/api/room', { action: pausing ? 'pause' : 'resume', code, token });
+        $('pauseBtn').textContent = pausing ? '▶ Resume' : '⏸ Pause';
+      } catch (e) { showToast(e.message); }
+    };
+
+    $('ratingsBtn').onclick = async () => {
+      const show = !room.showRatings;
+      try {
+        const res = await Core.api('/api/room', { action: 'ratings', code, token, show });
+        $('ratingsBtn').textContent = res.showRatings ? '🙈 Hide Ratings' : '👁 Show Ratings';
+      } catch (e) { showToast(e.message); }
+    };
+
+    $('timerSelect').onchange = async function () {
+      try {
+        await Core.api('/api/room', { action: 'timer', code, token, seconds: parseInt(this.value, 10) });
+        showToast('Timer set to ' + this.value + 's');
+      } catch (e) { showToast(e.message); }
+    };
+
+    $('resetBtn').onclick = async () => {
+      if (!confirm('Reset the room? All squads will be cleared.')) return;
+      try { await Core.api('/api/room', { action: 'reset', code, token }); }
+      catch (e) { showToast(e.message); }
+    };
+
+    $('copyLinkBtn').onclick = () => {
+      const inp = $('shareLink');
+      inp.select();
+      try { navigator.clipboard.writeText(inp.value); } catch (e) { document.execCommand('copy'); }
+      showToast('Join link copied — send it to your friends!');
+    };
+
+    $('teamRail').addEventListener('click', e => {
+      const el = e.target.closest('.rail-team');
+      if (!el) return;
+      viewTeam = el.dataset.id;
+      renderSquad();
+    });
+
+    // ---------- utils ----------
+    function nextBidLocal(price) {
+      if (price < 100) return price + 5;
+      if (price < 200) return price + 10;
+      if (price < 500) return price + 20;
+      if (price < 1000) return price + 40;
+      return price + 80;
+    }
+    function pIsOverseas(name) {
+      const p = playersIdx[name];
+      return p && p.c && p.c !== 'IND';
+    }
+    function flash(kind, big, sub) {
+      $('flash').className = 'sold-flash show ' + kind;
+      $('flashBig').textContent = big;
+      $('flashSub').textContent = sub;
+      setTimeout(() => { $('flash').className = 'sold-flash'; }, 2200);
+    }
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._h);
+      t._h = setTimeout(() => t.classList.remove('show'), 2600);
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function roleLabel(r) { return { BAT: 'Batter', BOW: 'Bowler', AR: 'All-Rounder', WK: 'Wicket-Keeper' }[r] || r; }
+
+    window.addEventListener('beforeunload', () => {
+      if (tickHandle) clearInterval(tickHandle);
+      if (pollHandle) clearInterval(pollHandle);
+    });
+  })();
+  </script>
+</body>
+</html>

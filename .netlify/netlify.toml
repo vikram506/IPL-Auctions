@@ -1,0 +1,41 @@
+functionsDirectory = "C:\\Users\\Owner\\OneDrive\\Desktop\\ipl\\netlify\\functions"
+functionsDirectoryOrigin = "config-v1"
+redirectsOrigin = "config"
+plugins = []
+headers = []
+
+[build]
+publish = "C:\\Users\\Owner\\OneDrive\\Desktop\\ipl"
+publishOrigin = "config"
+functions = "C:\\Users\\Owner\\OneDrive\\Desktop\\ipl\\netlify\\functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[functions]
+
+[functions."*"]
+included_files = ["data/*.json"]
+
+[[redirects]]
+from = "/api/teams"
+to = "/data/teams.json"
+status = 200.0
+force = true
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

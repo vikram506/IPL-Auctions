@@ -1,0 +1,5 @@
+node_modules
+.tools
+.netlify
+__pycache__
+data/_dev

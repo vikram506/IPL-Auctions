@@ -1,0 +1,12 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  included_files = ["data/*.json"]
+
+[[redirects]]
+  from = "/api/teams"
+  to = "/data/teams.json"
+  status = 200
+  force = true

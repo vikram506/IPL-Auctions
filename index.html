@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPL Auction Simulator — Play the IPL Mega Auction with Friends</title>
+  <meta name="description" content="Host a private IPL auction room, share the code, and bid live against your friends for 190+ rated players. Mega & mini auction modes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links">
+        <a href="join.html">Join with Code</a>
+        <a href="how-to-play.html">How to Play</a>
+        <a href="admin.html" class="btn btn-ghost btn-sm">🔐 Admin</a>
+        <a href="create.html" class="btn btn-primary btn-sm">Host a Room</a>
+      </nav>
+      <div></div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">🏏 Private rooms · live bidding · no bots</div>
+      <h1>Run your own <span class="gold">IPL auction</span><br />with your friends.</h1>
+      <p class="sub">Host a room, share the 6-character code, and everyone bids from their own phone. Bumrah at 95, Kohli at 94 — set your own ratings in Admin and decide who lands where.</p>
+      <div class="hero-cta">
+        <a href="create.html" class="btn btn-primary">Host a Room</a>
+        <a href="join.html" class="btn btn-ghost">Join with Code</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <h2 class="section-title">How it works</h2>
+      <div class="grid grid-3">
+        <div class="card"><div class="icon">🎛</div><h3>Host a room</h3><p>Pick mega or mini auction, your pace, and your franchise. You get a room code instantly.</p></div>
+        <div class="card"><div class="icon">📱</div><h3>Friends join</h3><p>Everyone opens the site, enters the code, and claims a free franchise. Up to 10 teams.</p></div>
+        <div class="card"><div class="icon">🔨</div><h3>Bid live</h3><p>The server runs the clock — hammer falls 2.4s after the last bid. Real IPL bid ladder, purse, and overseas cap.</p></div>
+        <div class="card"><div class="icon">⭐</div><h3>190+ rated players</h3><p>Jasprit Bumrah (95), Virat Kohli (94), Rohit (92), Buttler (92), Gill (91), Rashid (91)…</p></div>
+        <div class="card"><div class="icon">🔐</div><h3>Admin ratings control</h3><p>Admin login can change any player's rating or base price live — make Vaibhav Suryavanshi a 95 if you like.</p></div>
+        <div class="card"><div class="icon">🏆</div><h3>Squads & results</h3><p>Watch every squad fill up live, then compare final teams and export the auction as JSON.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="teams">
+    <div class="container">
+      <h2 class="section-title">All 10 franchises</h2>
+      <div class="grid grid-3" id="teamsGrid"></div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container inner">
+      <div>🏏 IPL Auction Sim — a fan-made auction game. Not affiliated with the IPL or BCCI.</div>
+      <div><a href="create.html">Host</a> · <a href="join.html">Join</a> · <a href="how-to-play.html">How to Play</a></div>
+    </div>
+  </footer>
+
+  <script src="js/core.js"></script>
+  <script>
+    Core.api('/api/teams').then(({ teams }) => {
+      document.getElementById('teamsGrid').innerHTML = teams.map(t =>
+        '<div class="team-chip">' +
+        '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+        '<div><div style="font-weight:800;font-size:14px">' + t.name + '</div>' +
+        '<div class="muted" style="font-size:12.5px">' + t.city + ' · ' + t.home + '</div></div>' +
+        '</div>'
+      ).join('');
+    }).catch(() => {});
+  </script>
+</body>
+</html>

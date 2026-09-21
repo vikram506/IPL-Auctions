@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — IPL Auction Sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+  <style>
+    .admin-row { display: grid; grid-template-columns: 1fr 90px 90px 100px; gap: 8px; align-items: center;
+      background: var(--bg2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; }
+    .admin-row input { width: 100%; background: var(--card); border: 1px solid var(--line); color: var(--text);
+      border-radius: 8px; padding: 6px 8px; font-size: 13px; font-family: inherit; }
+    .admin-row .nm { font-weight: 700; font-size: 13.5px; }
+    .admin-row .sub { color: var(--muted); font-size: 11px; }
+    .admin-row button { padding: 6px 10px; font-size: 12px; }
+    .dirty { border-color: var(--gold) !important; }
+    @media (max-width: 560px) { .admin-row { grid-template-columns: 1fr 70px 70px 90px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links">
+        <a href="create.html" class="btn btn-ghost btn-sm">Host</a>
+        <a href="join.html" class="btn btn-ghost btn-sm">Join</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section" id="loginSection" style="padding-top:60px">
+    <div style="max-width:420px;margin:0 auto;padding:0 20px">
+      <div class="panel">
+        <div class="center mb-2" style="font-size:44px">🔐</div>
+        <h2 class="center" style="margin-bottom:6px">Admin Login</h2>
+        <p class="muted center" style="font-size:13.5px;margin-bottom:20px">Edit player ratings and base prices — changes apply live to every room, even mid-auction.</p>
+        <div class="field">
+          <label>Username</label>
+          <input class="input" id="user" placeholder="Username" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input class="input" id="pw" type="password" placeholder="Password" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-primary btn-block" id="loginBtn">Sign In</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section hidden" id="editorSection" style="padding-top:40px">
+    <div class="container">
+      <div class="row-between mb-2" style="flex-wrap:wrap;gap:12px">
+        <div>
+          <h2 style="font-size:26px">Player Rating Editor</h2>
+          <p class="muted" style="font-size:13.5px">Saves instantly · applies to all rooms live · e.g. set Vaibhav Suryavanshi to 95.</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn">Log out</button>
+      </div>
+
+      <div class="panel mb-2">
+        <div class="field" style="margin-bottom:10px">
+          <label>Search players</label>
+          <input class="input" id="search" placeholder="Type a name… e.g. Vaibhav" />
+        </div>
+        <div id="playersList" style="max-height:60vh;overflow-y:auto"></div>
+      </div>
+
+      <div class="panel mt-3">
+        <h3 style="margin-bottom:12px">➕ Add a new player</h3>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:8px">
+          <input class="input" id="newName" placeholder="Full name" />
+          <input class="input" id="newCountry" placeholder="IND" maxlength="3" />
+          <select class="input" id="newRole">
+            <option value="BAT">Batter</option>
+            <option value="BOW">Bowler</option>
+            <option value="AR">All-Rounder</option>
+            <option value="WK">Wicket-Keeper</option>
+          </select>
+          <input class="input" id="newRating" type="number" min="40" max="99" placeholder="Rating" />
+          <input class="input" id="newBase" type="number" min="20" max="2000" placeholder="Base ₹L" />
+        </div>
+        <button class="btn btn-primary mt-2" id="addBtn">Add Player</button>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+  <script src="js/core.js"></script>
+  <script>
+  (function () {
+    let creds = null;
+    let players = [];
+    const $ = id => document.getElementById(id);
+
+    function showToast(msg) {
+      const t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._h);
+      t._h = setTimeout(() => t.classList.remove('show'), 2400);
+    }
+
+    $('loginBtn').onclick = async () => {
+      creds = { user: $('user').value.trim(), pw: $('pw').value };
+      try {
+        await loadPlayers();
+        sessionStorage.setItem('adminCreds', JSON.stringify(creds));
+        $('loginSection').classList.add('hidden');
+        $('editorSection').classList.remove('hidden');
+      } catch (e) { showToast('❌ ' + e.message); }
+    };
+    $('pw').addEventListener('keydown', e => { if (e.key === 'Enter') $('loginBtn').click(); });
+
+    $('logoutBtn').onclick = () => {
+      creds = null;
+      sessionStorage.removeItem('adminCreds');
+      $('editorSection').classList.add('hidden');
+      $('loginSection').classList.remove('hidden');
+    };
+
+    async function loadPlayers() {
+      const res = await Core.api('/api/admin', { action: 'list', ...creds });
+      players = res.players;
+      renderList();
+    }
+
+    function renderList() {
+      const q = $('search').value.trim().toLowerCase();
+      const filtered = q ? players.filter(p => p.n.toLowerCase().includes(q)) : players;
+      $('playersList').innerHTML = filtered.slice(0, 80).map(p =>
+        '<div class="admin-row" data-name="' + esc(p.n) + '">' +
+        '<div><div class="nm">' + esc(p.n) + '</div><div class="sub">' + p.c + ' · ' + roleLabel(p.r) + '</div></div>' +
+        '<input type="number" min="40" max="99" value="' + p.o + '" data-field="o" />' +
+        '<input type="number" min="20" max="2000" value="' + p.b + '" data-field="b" />' +
+        '<button class="btn btn-primary">Save</button>' +
+        '</div>'
+      ).join('') || '<p class="muted">No players match.</p>';
+    }
+
+    $('search').addEventListener('input', renderList);
+
+    $('playersList').addEventListener('click', async e => {
+      if (e.target.tagName !== 'BUTTON') return;
+      const row = e.target.closest('.admin-row');
+      const name = row.dataset.name;
+      const o = parseInt(row.querySelector('[data-field=o]').value, 10);
+      const b = parseInt(row.querySelector('[data-field=b]').value, 10);
+      try {
+        await Core.api('/api/admin', { action: 'update', ...creds, name, o, b });
+        const p = players.find(x => x.n === name);
+        if (p) { p.o = o; p.b = b; }
+        showToast('✅ Saved ' + name + ' — ' + o + ' OVR');
+        row.querySelectorAll('input').forEach(i => i.classList.remove('dirty'));
+      } catch (err) { showToast('❌ ' + err.message); }
+    });
+
+    $('playersList').addEventListener('input', e => {
+      if (e.target.tagName === 'INPUT') e.target.classList.add('dirty');
+    });
+
+    $('addBtn').onclick = async () => {
+      const name = $('newName').value.trim();
+      if (!name) return showToast('Enter a name');
+      try {
+        await Core.api('/api/admin', {
+          action: 'add', ...creds, name,
+          c: ($('newCountry').value.trim() || 'IND').toUpperCase(),
+          r: $('newRole').value,
+          o: parseInt($('newRating').value, 10) || 75,
+          b: parseInt($('newBase').value, 10) || 75,
+        });
+        showToast('✅ Added ' + name);
+        $('newName').value = ''; $('newRating').value = ''; $('newBase').value = '';
+        await loadPlayers();
+      } catch (err) { showToast('❌ ' + err.message); }
+    };
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    function roleLabel(r) { return { BAT: 'Batter', BOW: 'Bowler', AR: 'All-Rounder', WK: 'Wicket-Keeper' }[r] || r; }
+
+    try {
+      const saved = sessionStorage.getItem('adminCreds');
+      if (saved) {
+        creds = JSON.parse(saved);
+        loadPlayers().then(() => {
+          $('loginSection').classList.add('hidden');
+          $('editorSection').classList.remove('hidden');
+        }).catch(() => { creds = null; sessionStorage.removeItem('adminCreds'); });
+      }
+    } catch (e) {}
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join a Room — IPL Auction Sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links">
+        <a href="create.html" class="btn btn-ghost btn-sm">Host a Room</a>
+        <a href="admin.html" class="btn btn-ghost btn-sm">🔐 Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section" style="padding-top:50px">
+    <div style="max-width:760px;margin:0 auto;padding:0 20px">
+      <h2 class="section-title" style="text-align:left;font-size:30px">Join with a room code</h2>
+      <p class="section-sub" style="text-align:left;margin-bottom:28px">Ask the host for the 6-character code, then claim any franchise that's still free.</p>
+
+      <div class="panel">
+        <div class="field">
+          <label>Room code</label>
+          <input class="input" id="roomCode" placeholder="e.g. K7QM2P" maxlength="6"
+            style="text-transform:uppercase;letter-spacing:6px;font-size:22px;text-align:center;font-weight:800" />
+        </div>
+
+        <div class="field">
+          <label>Your name</label>
+          <input class="input" id="playerName" placeholder="e.g. Rahul" maxlength="24" />
+        </div>
+
+        <button class="btn btn-primary btn-block" id="findBtn">Find Room →</button>
+
+        <div id="lobby" class="hidden">
+          <div class="field mt-3">
+            <label>Room <b id="lobbyCode" style="color:var(--gold);letter-spacing:2px"></b> · pick your franchise</label>
+            <div class="team-picker" id="teamPicker" style="grid-template-columns:repeat(5,1fr)"></div>
+          </div>
+          <button class="btn btn-primary btn-block" id="joinBtn">Join Auction →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+  <script src="js/core.js"></script>
+  <script>
+    (function () {
+      let targetTeam = null;
+
+      const pre = Core.qs('code');
+      if (pre) document.getElementById('roomCode').value = pre.toUpperCase();
+
+      function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._h);
+        t._h = setTimeout(() => t.classList.remove('show'), 2600);
+      }
+
+      async function loadTeams(code) {
+        const [{ teams }, { room }] = await Promise.all([
+          Core.api('/api/teams'),
+          Core.api('/api/room?code=' + code),
+        ]);
+        const picker = document.getElementById('teamPicker');
+        picker.innerHTML = teams.map(t => {
+          const taken = room.teams[t.id].owner;
+          return '<div class="team-pick' + (taken ? ' disabled' : '') + '" data-id="' + t.id + '" style="' +
+            (taken ? 'opacity:.35;cursor:not-allowed' : '') + '">' +
+            '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+            '<div class="nm">' + (taken ? '✓ ' + taken : t.name) + '</div></div>';
+        }).join('');
+        picker.onclick = e => {
+          const el = e.target.closest('.team-pick');
+          if (!el || el.classList.contains('disabled')) return;
+          targetTeam = el.dataset.id;
+          picker.querySelectorAll('.team-pick').forEach(x => x.classList.toggle('selected', x === el));
+        };
+      }
+
+      document.getElementById('findBtn').addEventListener('click', async () => {
+        const code = document.getElementById('roomCode').value.trim().toUpperCase();
+        if (code.length !== 6) return showToast('Enter the 6-character room code');
+        try {
+          await loadTeams(code);
+          document.getElementById('lobbyCode').textContent = code;
+          document.getElementById('lobby').classList.remove('hidden');
+        } catch (err) { showToast(err.message); }
+      });
+
+      document.getElementById('joinBtn').addEventListener('click', async () => {
+        const code = document.getElementById('roomCode').value.trim().toUpperCase();
+        const name = document.getElementById('playerName').value.trim();
+        if (!name) return showToast('Enter your name');
+        if (!targetTeam) return showToast('Pick a franchise');
+        try {
+          const res = await Core.api('/api/join', { code, team: targetTeam, name });
+          Core.Session.set({ roomCode: code, team: res.team, token: res.token, name });
+          location.href = 'room.html?code=' + code;
+        } catch (err) { showToast(err.message); }
+      });
+
+      document.getElementById('roomCode').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('findBtn').click();
+      });
+    })();
+  </script>
+</body>
+</html>

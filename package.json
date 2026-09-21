@@ -1,0 +1,15 @@
+{
+  "name": "ipl-auction-sim",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multiplayer IPL auction simulator — host a room, friends join with a code, no bots",
+  "scripts": {
+    "dev": "python dev_server.py",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^7.4.0",
+    "netlify-cli": "^27.8.0"
+  }
+}

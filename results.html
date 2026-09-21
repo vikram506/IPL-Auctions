@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results — IPL Auction Sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links">
+        <button class="btn btn-ghost btn-sm" id="exportBtn">⬇ Export JSON</button>
+        <a href="create.html" class="btn btn-primary btn-sm">New Room</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="results-hero">
+    <div class="container">
+      <div style="font-size:60px">🏆</div>
+      <h2 style="font-size:34px;margin-top:8px">Auction Complete</h2>
+      <p class="muted" id="roomInfo">Room ------</p>
+    </div>
+  </section>
+
+  <div class="container" style="padding-bottom:60px">
+    <div class="results-grid" id="resultsGrid"></div>
+
+    <div class="panel mt-3">
+      <h3 style="margin-bottom:14px">⭐ Highest-rated signing of the auction</h3>
+      <div id="bestSigning" class="muted">—</div>
+    </div>
+
+    <div class="center mt-3">
+      <a class="btn btn-primary" href="create.html">Run Another Auction 🔨</a>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container inner">
+      <div>🏏 IPL Auction Sim — a fan-made auction game. Not affiliated with the IPL or BCCI.</div>
+      <div><a href="index.html">Home</a></div>
+    </div>
+  </footer>
+
+  <script src="js/core.js"></script>
+  <script>
+  (async function () {
+    const code = (Core.qs('code') || '').toUpperCase();
+    let room, players = [];
+    try {
+      const data = await Core.api('/api/room?code=' + code);
+      room = data.room;
+      players = data.players || [];
+    } catch (e) { location.href = 'create.html'; return; }
+
+    const idx = {};
+    players.forEach(p => { idx[p.n] = p; });
+    const soldCount = room.log.filter(l => l.indexOf('SOLD') === 0).length;
+
+    document.getElementById('roomInfo').textContent =
+      'Room ' + room.code + ' · ' + room.rules.label + ' · ' + soldCount + ' players sold';
+
+    document.getElementById('resultsGrid').innerHTML = room.order.map(id => {
+      const t = room.teams[id];
+      const spent = t.squad.reduce((a, p) => a + p.p, 0);
+      const ratings = t.squad.map(s => (idx[s.n] || {}).o || 0);
+      const avg = ratings.length ? Math.round(ratings.reduce((a, b) => a + b, 0) / ratings.length) : 0;
+      const ov = t.squad.filter(s => (idx[s.n] || {}).c !== 'IND').length;
+      return '<div class="result-card' + (id === room.hostTeam ? ' own' : '') + '">' +
+        '<h3><span class="team-logo" style="display:inline-flex;background:' + t.gradient + ';width:26px;height:26px;font-size:9px;border-radius:8px;vertical-align:middle;margin-right:6px">' + t.short + '</span>' +
+        t.name + (id === room.hostTeam ? ' <span class="badge-pill">HOST</span>' : '') + '</h3>' +
+        '<div class="spend">Spent ' + Core.fmtCr(spent / 100) + ' · Left ' + Core.fmtCr(t.purse / 100) + '</div>' +
+        '<div class="muted" style="font-size:12px;margin-bottom:10px">' + t.squad.length + ' players · Avg rating ' + avg + ' · ' + ov + ' overseas' +
+        (t.owner ? ' · Owner: ' + esc(t.owner) : '') + '</div>' +
+        '<div class="squad">' + (t.squad.length ? t.squad.map(s => {
+          const m = idx[s.n] || {};
+          return '<div class="srow"><span><b>' + s.n + '</b> <span class="muted">' + (m.r || '') + ' ' + (m.o || '') + '</span></span>' +
+            '<span class="pr">' + Core.fmtLakh(s.p) + '</span></div>';
+        }).join('') : '<div class="muted" style="font-size:12px">No players</div>') + '</div>' +
+        '</div>';
+    }).join('');
+
+    // best signing from squads (highest rating sold)
+    let best = null;
+    for (const id of room.order) {
+      for (const s of room.teams[id].squad) {
+        const m = idx[s.n] || {};
+        if (!best || (m.o || 0) > (idx[best.n] || { o: 0 }).o) best = { ...s, ...m };
+      }
+    }
+    if (best && best.n) {
+      document.getElementById('bestSigning').innerHTML =
+        '<div class="result-card"><h3>' + best.n + ' <span class="badge-pill">' + best.o + ' OVR</span></h3>' +
+        '<div class="muted">Sold for ' + Core.fmtLakh(best.p) + '</div></div>';
+    }
+
+    document.getElementById('exportBtn').onclick = () => {
+      const data = room.order.map(id => {
+        const t = room.teams[id];
+        return { team: t.name, owner: t.owner, purseLeftCr: +(t.purse / 100).toFixed(2),
+          players: t.squad.map(s => ({ name: s.n, priceCr: s.p / 100 })) };
+      });
+      const blob = new Blob([JSON.stringify({ room: room.code, mode: room.mode, teams: data }, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ipl-auction-' + room.code + '.json';
+      a.click();
+    };
+
+    function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  })();
+  </script>
+</body>
+</html>

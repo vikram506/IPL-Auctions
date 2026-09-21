@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host a Room — IPL Auction Sim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏏</text></svg>" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html"><span class="ball"></span> IPL Auction Sim</a>
+      <nav class="nav-links">
+        <a href="join.html" class="btn btn-ghost btn-sm">Join with Code</a>
+        <a href="admin.html" class="btn btn-ghost btn-sm">🔐 Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="section" style="padding-top:50px">
+    <div style="max-width:760px;margin:0 auto;padding:0 20px">
+      <h2 class="section-title" style="text-align:left;font-size:30px">Host an auction room</h2>
+      <p class="section-sub" style="text-align:left;margin-bottom:28px">You'll get a 6-character code. Friends join on their phones — no bots, only real bidding. You control timer, ratings and the hammer.</p>
+
+      <div class="panel">
+        <div class="field">
+          <label>Your name</label>
+          <input class="input" id="hostName" placeholder="e.g. Vikram" maxlength="24" />
+        </div>
+
+        <div class="field">
+          <label>Auction type</label>
+          <div class="mode-grid" id="modeCards">
+            <div class="radio-card selected" data-mode="MEGA">
+              <input type="radio" name="mode" value="MEGA" checked />
+              <div>
+                <h4>🔥 Mega Auction</h4>
+                <p>₹120 Cr purse each · random sets, marquee tier first</p>
+              </div>
+            </div>
+            <div class="radio-card" data-mode="MINI">
+              <input type="radio" name="mode" value="MINI" />
+              <div>
+                <h4>⚡ Mini Auction</h4>
+                <p>₹40 Cr purse each · quick top-up auction</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-grid">
+          <div class="field">
+            <label>Bid timer (host can change mid-game)</label>
+            <select class="input" id="bidSeconds">
+              <option value="10" selected>10 seconds — default</option>
+              <option value="7">7 seconds</option>
+              <option value="5">5 seconds</option>
+              <option value="3">3 seconds — rapid fire</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Player ratings</label>
+            <select class="input" id="showRatings">
+              <option value="show" selected>Visible to everyone</option>
+              <option value="hide">Hidden (pure auction nerves)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Pick your franchise</label>
+          <div class="team-picker" id="teamPicker"></div>
+        </div>
+
+        <button class="btn btn-primary btn-block mt-2" id="createBtn">Create Room →</button>
+        <p class="muted center mt-1" style="font-size:12.5px">Friends open Join with Code, enter your code and claim a franchise.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="toast"></div>
+  <script src="js/core.js"></script>
+  <script>
+    (function () {
+      let mode = 'MEGA', team = null;
+      const picker = document.getElementById('teamPicker');
+
+      async function boot() {
+        const { teams } = await Core.api('/api/teams');
+        picker.innerHTML = teams.map(t =>
+          '<div class="team-pick" data-id="' + t.id + '">' +
+          '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+          '<div class="nm">' + t.name + '</div></div>').join('');
+        picker.addEventListener('click', e => {
+          const el = e.target.closest('.team-pick');
+          if (!el) return;
+          team = el.dataset.id;
+          picker.querySelectorAll('.team-pick').forEach(x => x.classList.toggle('selected', x === el));
+        });
+      }
+      boot();
+
+      document.getElementById('modeCards').addEventListener('click', e => {
+        const el = e.target.closest('.radio-card');
+        if (!el) return;
+        mode = el.dataset.mode;
+        document.querySelectorAll('#modeCards .radio-card').forEach(x => x.classList.toggle('selected', x === el));
+        el.querySelector('input').checked = true;
+      });
+
+      document.getElementById('createBtn').addEventListener('click', async () => {
+        if (!team) return showToast('Pick your franchise first');
+        const name = document.getElementById('hostName').value.trim() || 'Host';
+        try { localStorage.setItem('hostName', name); } catch (e) {}
+        try {
+          const res = await Core.api('/api/room', {
+            action: 'create',
+            mode,
+            team,
+            name,
+            bidSeconds: parseInt(document.getElementById('bidSeconds').value, 10),
+            showRatings: document.getElementById('showRatings').value === 'show',
+          });
+          Core.Session.set({ roomCode: res.code, team, host: true, name });
+          location.href = 'room.html?code=' + res.code;
+        } catch (err) { showToast(err.message); }
+      });
+
+      function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._h);
+        t._h = setTimeout(() => t.classList.remove('show'), 2400);
+      }
+    })();
+  </script>
+</body>
+</html>
