@@ -51,10 +51,12 @@
   </section>
 
   <div id="toast"></div>
+  <script src="js/data.js"></script>
   <script src="js/core.js"></script>
   <script>
     (function () {
       let targetTeam = null;
+      let teamsData = window.TEAMS_DATA || [];
 
       const pre = Core.qs('code');
       if (pre) document.getElementById('roomCode').value = pre.toUpperCase();
@@ -68,10 +70,12 @@
       }
 
       async function loadTeams(code) {
-        const [{ teams }, { room }] = await Promise.all([
-          Core.api('/api/teams'),
-          Core.api('/api/room?code=' + code),
-        ]);
+        let teams = teamsData;
+        try {
+          const res = await Core.api('/api/teams');
+          if (res.teams && res.teams.length) teams = res.teams;
+        } catch (e) { /* use embedded */ }
+        const { room } = await Core.api('/api/room?code=' + code);
         const picker = document.getElementById('teamPicker');
         picker.innerHTML = teams.map(t => {
           const taken = room.teams[t.id].owner;
