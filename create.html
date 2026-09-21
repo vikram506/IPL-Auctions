@@ -82,24 +82,39 @@
   </section>
 
   <div id="toast"></div>
+  <script src="js/data.js"></script>
   <script src="js/core.js"></script>
   <script>
     (function () {
       let mode = 'MEGA', team = null;
       const picker = document.getElementById('teamPicker');
 
-      async function boot() {
-        const { teams } = await Core.api('/api/teams');
+      function renderTeams(teams) {
         picker.innerHTML = teams.map(t =>
           '<div class="team-pick" data-id="' + t.id + '">' +
           '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
           '<div class="nm">' + t.name + '</div></div>').join('');
+      }
+
+      function pickHandler() {
         picker.addEventListener('click', e => {
           const el = e.target.closest('.team-pick');
           if (!el) return;
           team = el.dataset.id;
           picker.querySelectorAll('.team-pick').forEach(x => x.classList.toggle('selected', x === el));
         });
+      }
+
+      async function boot() {
+        // render embedded data instantly as fallback
+        renderTeams(window.TEAMS_DATA || []);
+        pickHandler();
+        try {
+          const { teams } = await Core.api('/api/teams');
+          if (teams && teams.length) { renderTeams(teams); pickHandler(); }
+        } catch (e) {
+          console.warn('API teams unavailable, using embedded data:', e.message);
+        }
       }
       boot();
 
