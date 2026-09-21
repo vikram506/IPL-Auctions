@@ -64,17 +64,23 @@
     </div>
   </footer>
 
+  <script src="js/data.js"></script>
   <script src="js/core.js"></script>
   <script>
-    Core.api('/api/teams').then(({ teams }) => {
-      document.getElementById('teamsGrid').innerHTML = teams.map(t =>
-        '<div class="team-chip">' +
-        '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
-        '<div><div style="font-weight:800;font-size:14px">' + t.name + '</div>' +
-        '<div class="muted" style="font-size:12.5px">' + t.city + ' · ' + t.home + '</div></div>' +
-        '</div>'
-      ).join('');
-    }).catch(() => {});
+    (function () {
+      const grid = document.getElementById('teamsGrid');
+      function render(teams) {
+        grid.innerHTML = teams.map(t =>
+          '<div class="team-chip">' +
+          '<div class="team-logo" style="background:' + t.gradient + '">' + t.short + '</div>' +
+          '<div><div style="font-weight:800;font-size:14px">' + t.name + '</div>' +
+          '<div class="muted" style="font-size:12.5px">' + t.city + ' · ' + t.home + '</div></div>' +
+          '</div>'
+        ).join('');
+      }
+      render(window.TEAMS_DATA || []);          // instant, no waiting for API
+      Core.api('/api/teams').then(d => { if (d.teams && d.teams.length) render(d.teams); }).catch(() => {});
+    })();
   </script>
 </body>
 </html>
